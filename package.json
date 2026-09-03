@@ -1,0 +1,10 @@
+{
+  "name": "rapfa-catalog",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node server.mjs"
+  },
+  "engines": { "node": ">=18" }
+}
