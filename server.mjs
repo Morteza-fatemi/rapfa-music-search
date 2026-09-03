@@ -6,10 +6,13 @@ import { extname, join, normalize } from 'node:path';
 const root = process.cwd();
 const types = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8' };
 const send = (res, status, body, type = 'application/json; charset=utf-8') => { res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' }); res.end(typeof body === 'string' ? body : JSON.stringify(body)); };
+const artistIds = new Map([['sajad shahi', '1640091683'], ['sajjad shahi', '1640091683'], ['سجاد شاهی', '1640091683']]);
 
 async function searchMusic(query) {
-  const request = new URL('https://itunes.apple.com/search');
-  request.search = new URLSearchParams({ term: query || 'رپ فارسی', media: 'music', entity: 'song', limit: '25' });
+  const term = (query || 'رپ فارسی').trim();
+  const artistId = artistIds.get(term.toLowerCase());
+  const request = new URL(artistId ? 'https://itunes.apple.com/lookup' : 'https://itunes.apple.com/search');
+  request.search = new URLSearchParams(artistId ? { id: artistId, entity: 'song' } : { term, media: 'music', entity: 'song', limit: '25' });
   const response = await fetch(request);
   if (!response.ok) throw new Error(`Music search returned ${response.status}`);
   const data = await response.json();
