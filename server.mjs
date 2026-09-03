@@ -7,10 +7,12 @@ const root = process.cwd();
 const types = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8' };
 const send = (res, status, body, type = 'application/json; charset=utf-8') => { res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' }); res.end(typeof body === 'string' ? body : JSON.stringify(body)); };
 const artistIds = new Map([['sajad shahi', '1640091683'], ['sajjad shahi', '1640091683'], ['سجاد شاهی', '1640091683']]);
+const sajadSoundCloud = ['mord','rakab','tragedy','harifam-ni','fall','tasliat','pop','miras','upset','boro'].map((slug) => ({ id: `soundcloud-${slug}`, title: slug.toUpperCase().replaceAll('-', ' '), artist: 'Sajad Shahi', kind: 'پخش کامل رسمی SoundCloud', post: `https://soundcloud.com/sajadshahi/${slug}`, full: `https://soundcloud.com/sajadshahi/${slug}` }));
 
 async function searchMusic(query) {
   const term = (query || 'رپ فارسی').trim();
   const artistId = artistIds.get(term.toLowerCase());
+  if (artistId) return sajadSoundCloud;
   const request = new URL(artistId ? 'https://itunes.apple.com/lookup' : 'https://itunes.apple.com/search');
   request.search = new URLSearchParams(artistId ? { id: artistId, entity: 'song' } : { term, media: 'music', entity: 'song', limit: '25' });
   const response = await fetch(request);
