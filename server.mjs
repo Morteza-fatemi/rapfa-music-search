@@ -7,22 +7,20 @@ const root = process.cwd();
 const types = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8' };
 const send = (res, status, body, type = 'application/json; charset=utf-8') => { res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' }); res.end(typeof body === 'string' ? body : JSON.stringify(body)); };
 
-async function searchYouTube(query) {
-  const key = process.env.YOUTUBE_API_KEY;
-  if (!key) throw new Error('YOUTUBE_API_KEY is not configured');
-  const request = new URL('https://www.googleapis.com/youtube/v3/search');
-  request.search = new URLSearchParams({ key, part: 'snippet', type: 'video', videoEmbeddable: 'true', maxResults: '24', order: 'date', q: `${query || 'رپ فارسی جدید'} رپ فارسی` });
+async function searchMusic(query) {
+  const request = new URL('https://itunes.apple.com/search');
+  request.search = new URLSearchParams({ term: query || 'رپ فارسی', media: 'music', entity: 'song', limit: '25' });
   const response = await fetch(request);
-  if (!response.ok) throw new Error(`YouTube returned ${response.status}`);
+  if (!response.ok) throw new Error(`Music search returned ${response.status}`);
   const data = await response.json();
-  return (data.items || []).map((item) => ({ id: item.id.videoId, title: item.snippet.title, artist: item.snippet.channelTitle, kind: 'ویدئوی قابل پخش یوتیوب', thumbnail: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || '', post: `https://www.youtube.com/watch?v=${item.id.videoId}`, embed: `https://www.youtube-nocookie.com/embed/${item.id.videoId}?autoplay=1&rel=0` })).filter((item) => item.id);
+  return (data.results || []).map((item) => ({ id: item.trackId, title: item.trackName, artist: item.artistName, kind: 'پیش‌نمایش رسمی ۳۰ثانیه‌ای', thumbnail: item.artworkUrl100, post: item.trackViewUrl, preview: item.previewUrl })).filter((item) => item.id && item.preview);
 }
 
 createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   if (url.pathname === '/api/search') {
-    try { send(res, 200, { tracks: await searchYouTube(url.searchParams.get('q') || '') }); }
-    catch { send(res, 503, { error: process.env.YOUTUBE_API_KEY ? 'جست‌وجوی یوتیوب موقتاً پاسخ نداد؛ کمی بعد دوباره امتحان کن.' : 'کلید YouTube API هنوز در تنظیمات سرور وارد نشده است.' }); }
+    try { send(res, 200, { tracks: await searchMusic(url.searchParams.get('q') || '') }); }
+    catch { send(res, 503, { error: 'جست‌وجوی موسیقی موقتاً پاسخ نداد؛ کمی بعد دوباره امتحان کن.' }); }
     return;
   }
   const requested = url.pathname === '/' ? '/index.html' : url.pathname;
