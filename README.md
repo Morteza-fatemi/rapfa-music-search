@@ -24,7 +24,7 @@ npm test
 npm start
 ```
 
-The build copies **only** `public/index.html`, `public/styles.css` and `public/app.js` into `dist/`. If `dist/` exists, the server serves these generated assets; otherwise it serves the same files from `public/`.
+The build copies **only** `public/index.html`, `public/styles.css` and `public/app.js` into `dist/`, and optionally injects an explicitly configured API origin into the generated `dist/index.html`. If `dist/` exists, the server serves these generated assets; otherwise it serves the same files from `public/`.
 
 ## Project layout
 
@@ -42,6 +42,28 @@ Do not commit API keys or configuration secrets. Review the hosting platform's o
 
 The API accepts a maximum 120-character search string, sets an upstream request timeout, returns generic provider failure messages, and retains `Access-Control-Allow-Origin: *` for public read-only search requests. This API is intentionally public and has no credentials. Deploy behind hosting-level rate limiting if traffic grows.
 
+## API origin and offline/local development
+
+The HTML contains an empty `<meta name="rapfa-api-base" content="">` by default. An empty value means **same-origin requests** to `/api/search`; no Render or other external host is hardcoded in browser JavaScript.
+
+For local development, run `npm start` (optionally `npm run build` first). For a statically hosted frontend whose API is deployed elsewhere, explicitly set the build-time environment variable and deploy the generated `dist/` directory:
+
+```bash
+RAPFA_API_BASE_URL=https://your-public-api.example npm run build
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:RAPFA_API_BASE_URL = "https://your-public-api.example"
+npm run build
+Remove-Item Env:RAPFA_API_BASE_URL
+```
+
+Build validation allows only HTTPS **origins** (without embedded credentials, paths, query strings or fragments). Plain HTTP origins are allowed only for loopback development. To use local API again, clear the build variable and rerun `npm run build`. The source `public/index.html` is never altered by a configured build.
+
+When deploying a static frontend on another domain, configure your API host's CORS/network policy accordingly. The Node server's search endpoint is public and read-only.
+
 ## Deployment
 
 For Render Web Service or equivalent:
@@ -50,10 +72,11 @@ For Render Web Service or equivalent:
 - Start command: `npm start`
 - Runtime: Node.js 20 or newer
 
-If a host uses `npm start` directly without the build step, the source `public/` assets are served. The site preserves its existing public search behavior.
+If a host uses `npm start` directly without the build step, the source `public/` assets are served. Without an explicit override the browser calls **the same origin** as the page, so `npm start` and the local `GET /api/search` work together. If you build with an external API origin, rebuild with the variable unset before switching back to local mode.
 
 ## Known limitations
 
 - Catalog searches require access to Apple Music/iTunes Search APIs.
 - Official external audio previews and SoundCloud embeds may have regional availability limits.
-- No end-to-end browser/visual test is included; Node integration tests cover HTTP behavior and HTML/CSS/JS player wiring.
+- Playwright runs browser E2E tests on Chromium, including an actual browser → local Node API request without request interception, plus separately mocked UI/provider cases.
+- Hosted CI cannot guarantee that Apple Music, iTunes or SoundCloud currently respond in a given region.
