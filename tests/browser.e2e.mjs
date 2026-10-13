@@ -118,3 +118,40 @@ test('mobile viewport remains usable and does not scroll horizontally',async()=>
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),true);
   }finally{await page.close();}
 });
+
+test('browser talks to the local Node API end-to-end without route interception',async()=>{
+  const localQueries=[];
+  const localServer=createAppServer({
+    search:async query=>{
+      localQueries.push(query);
+      return [{id:'integration-1',title:'پاسخ واقعی HTTP محلی',artist:'دادهٔ ساختگی تست',
+               kind:'پیش‌نمایش',thumbnail:'',post:'https://music.apple.com/',
+               preview:'https://example.invalid/sound.mp3'}];
+    }
+  });
+  await new Promise((resolve,reject)=>{
+    localServer.once('error',reject);
+    localServer.listen(0,'127.0.0.1',resolve);
+  });
+  const localBase='http://127.0.0.1:'+localServer.address().port;
+  const page=await browser.newPage();
+  const requests=[];
+  page.on('request',r=>{if(r.url().includes('/api/search'))requests.push(r.url());});
+  try{
+    await page.goto(localBase);
+    assert.equal(await page.locator('meta[name="rapfa-api-base"]').getAttribute('content'),'');
+    await page.getByText('پاسخ واقعی HTTP محلی').waitFor();
+    assert.deepEqual(localQueries,['رپ فارسی جدید']);
+    assert.equal(requests.length,1);
+    assert.equal(new URL(requests[0]).origin,localBase);
+    assert.equal(await page.locator('.track').count(),1);
+    await page.locator('#search').fill('هیچکس');
+    await page.locator('#search').press('Enter');
+    await page.waitForFunction(() => document.querySelector('#result-title').textContent.includes('هیچکس'));
+    assert.deepEqual(localQueries,['رپ فارسی جدید','هیچکس']);
+    assert.equal(new URL(requests[1]).origin,localBase);
+  }finally{
+    await page.close();
+    await new Promise(resolve=>localServer.close(resolve));
+  }
+});
