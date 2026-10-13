@@ -64,6 +64,7 @@ test('Apple preview modal opens and closes without leaving media playing',async(
     assert.equal(await page.locator('#soundcloud-player').isVisible(),false);
     await page.locator('#close-player').click();
     assert.equal(await page.locator('#player-dialog').evaluate(el=>el.open),false);
+    await page.waitForFunction(() => document.querySelector('#preview-player').getAttribute('src') === '');
     assert.equal(await page.locator('#preview-player').getAttribute('src'),'');
   }finally{await page.close();}
 });
