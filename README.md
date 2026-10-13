@@ -64,6 +64,10 @@ Build validation allows only HTTPS **origins** (without embedded credentials, pa
 
 When deploying a static frontend on another domain, configure your API host's CORS/network policy accordingly. The Node server's search endpoint is public and read-only.
 
+## Versioned source releases
+
+Use [RELEASE_PROCESS.md](RELEASE_PROCESS.md) for tagging SemVer commits and the CI-gated preview workflow. The original `v0.1.0` release is source-only; future tags run fresh checks and are published as prereleases if all gates pass. No Windows installer or production guarantee is implied.
+
 ## Deployment
 
 For Render Web Service or equivalent:
