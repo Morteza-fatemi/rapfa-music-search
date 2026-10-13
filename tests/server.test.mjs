@@ -121,7 +121,7 @@ test('rejects symlinked public assets', async (t) => {
 
 test('npm build outputs exactly three approved assets', async () => {
   const run = spawnSync(process.execPath, ['scripts/build.mjs'], {
-    cwd: repo, encoding: 'utf8',
+    cwd: repo, encoding: 'utf8', env: {...process.env, RAPFA_API_BASE_URL: ''},
   });
   assert.equal(run.status, 0, run.stderr);
   const expected = ['app.js', 'index.html', 'styles.css'];
@@ -146,4 +146,42 @@ test('both players have matching selectors and hidden states', async () => {
   assert.match(css, /#preview-player\[hidden\]/);
   assert.match(js, /soundcloudPlayer\.hidden=!full/);
   assert.match(js, /previewPlayer\.hidden=full/);
+});
+
+test('build injects a validated HTTPS API origin for static hosting', async () => {
+  const run = spawnSync(process.execPath, ['scripts/build.mjs'], {
+    cwd: repo, encoding: 'utf8',
+    env: {...process.env, RAPFA_API_BASE_URL: 'https://api.example.org/'},
+  });
+  assert.equal(run.status, 0, run.stderr);
+  const built = await readFile(join(repo, 'dist/index.html'), 'utf8');
+  assert.match(built, /name="rapfa-api-base" content="https:\/\/api\.example\.org"/);
+  assert.doesNotMatch(await readFile(join(repo,'public/index.html'),'utf8'), /https:\/\/api\.example\.org/);
+});
+
+test('build rejects credentials, unexpected paths, and insecure external HTTP', async () => {
+  for (const address of [
+    'http://example.org', 'https://user:secret@example.org',
+    'https://example.org/private', 'javascript:alert(1)',
+    'https://example.org/?token=leak',
+  ]) {
+    const run = spawnSync(process.execPath, ['scripts/build.mjs'], {
+      cwd: repo, encoding: 'utf8',
+      env: {...process.env, RAPFA_API_BASE_URL: address},
+    });
+    assert.notEqual(run.status, 0, 'Expected rejection: ' + address);
+  }
+});
+
+test('unconfigured local build leaves same-origin API and publishes no external URL', async () => {
+  const run = spawnSync(process.execPath, ['scripts/build.mjs'], {
+    cwd: repo, encoding: 'utf8',
+    env: {...process.env, RAPFA_API_BASE_URL: ''},
+  });
+  assert.equal(run.status, 0, run.stderr);
+  const page = await readFile(join(repo, 'dist/index.html'), 'utf8');
+  const app = await readFile(join(repo, 'dist/app.js'), 'utf8');
+  assert.match(page, /name="rapfa-api-base" content=""/);
+  assert.doesNotMatch(app, /rapfa-music-search-live\.onrender\.com/);
+  assert.match(app, /\/api\/search/);
 });
